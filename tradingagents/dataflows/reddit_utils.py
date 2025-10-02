@@ -6,6 +6,11 @@ from contextlib import contextmanager
 from typing import Annotated
 import os
 import re
+import logging
+
+from .json_validator import sanitize_json_string
+
+logger = logging.getLogger(__name__)
 
 ticker_to_company = {
     "AAPL": "Apple",
@@ -81,13 +86,21 @@ def fetch_top_from_category(
 
         all_content_curr_subreddit = []
 
-        with open(os.path.join(base_path, category, data_file), "rb") as f:
+        with open(os.path.join(base_path, category, data_file), "r", encoding="utf-8", errors="ignore") as f:
             for i, line in enumerate(f):
                 # skip empty lines
                 if not line.strip():
                     continue
 
-                parsed_line = json.loads(line)
+                try:
+                    # Use strict=False to handle Unicode escape issues
+                    parsed_line = json.loads(line, strict=False)
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Skipping line {i} in {data_file} due to JSON decode error: {e}")
+                    continue
+                except Exception as e:
+                    logger.warning(f"Skipping line {i} in {data_file} due to error: {e}")
+                    continue
 
                 # select only lines that are from the date
                 post_date = datetime.utcfromtimestamp(

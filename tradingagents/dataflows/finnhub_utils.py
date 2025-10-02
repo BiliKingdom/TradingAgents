@@ -1,5 +1,10 @@
 import json
 import os
+import logging
+
+from .json_validator import load_json_safe
+
+logger = logging.getLogger(__name__)
 
 
 def get_data_in_range(ticker, start_date, end_date, data_type, data_dir, period=None):
@@ -25,8 +30,12 @@ def get_data_in_range(ticker, start_date, end_date, data_type, data_dir, period=
             data_dir, "finnhub_data", data_type, f"{ticker}_data_formatted.json"
         )
 
-    data = open(data_path, "r")
-    data = json.load(data)
+    # Use the safe JSON loader with multiple fallback strategies
+    data = load_json_safe(data_path, default={})
+
+    if not data:
+        logger.warning(f"No data loaded from {data_path}")
+        return {}
 
     # filter keys (date, str in format YYYY-MM-DD) by the date range (str, str in format YYYY-MM-DD)
     filtered_data = {}
